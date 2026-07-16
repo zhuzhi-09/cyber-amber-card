@@ -1,6 +1,6 @@
 {
   "name": "card-generator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "16:9 引用卡片生成器",
   "private": true,
   "dependencies": {
