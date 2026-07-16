@@ -1,0 +1,13 @@
+{
+  "name": "card-generator",
+  "version": "1.0.0",
+  "description": "16:9 引用卡片生成器",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/share": "^8.0.1"
+  }
+}

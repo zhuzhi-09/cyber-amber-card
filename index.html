@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16:9 引用卡片生成器</title>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg-start: #1a1a2e;
+    --bg-end: #16213e;
+    --accent: #e94560;
+    --text: #ffffff;
+    --sub: #a0a0b8;
+    --card-radius: 20px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0d0d1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-help {
+    padding: 4px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.06);
+    color: #888;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .btn-help:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 30px;
+  }
+
+  /* ---- Card Preview ---- */
+  .card-wrapper {
+    width: 100%;
+    max-width: 960px;
+    margin-bottom: 30px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+
+  #card {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* Background layer */
+  .card-bg {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+    transition: background 0.4s;
+  }
+  /* Dark overlay for text readability when bg image is set */
+  .card-bg.has-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+  }
+
+  /* Content layer */
+  .card-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    padding: 80px 100px;
+    gap: 80px;
+  }
+
+  /* -- Left Panel -- */
+  .left-panel {
+    flex: 0 0 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .avatar {
+    width: var(--avatar-size, 100px);
+    height: var(--avatar-size, 100px);
+    border-radius: 12px;
+    object-fit: cover;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+
+  /* -- Right Panel -- */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .quote-mark {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 80px;
+    line-height: 0.6;
+    color: rgba(233, 69, 96, 0.5);
+    margin-bottom: 20px;
+    user-select: none;
+  }
+
+  .quote-text {
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Roboto", sans-serif;
+    font-size: var(--quote-size, 24px);
+    font-weight: 500;
+    line-height: 1.8;
+    color: #fff;
+    word-break: break-word;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 40px;
+    flex-wrap: nowrap;
+  }
+
+  .at-tag {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 8px 22px;
+    border-radius: 20px;
+    font-size: var(--tag-size, 12px);
+    font-weight: 500;
+    letter-spacing: 1px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .date-tag {
+    font-size: var(--tag-size, 12px);
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .date-tag {
+    font-size: var(--tag-size, 12px);
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 1px;
+  }
+
+  /* ---- Draggable ---- */
+  .draggable {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .draggable:active {
+    cursor: grabbing;
+  }
+  .dragging {
+    cursor: grabbing !important;
+    z-index: 10;
+  }
+
+  /* ---- Toggle Switch ---- */
+  .toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #aaa;
+    user-select: none;
+  }
+  .toggle-label input[type="checkbox"] {
+    display: none;
+  }
+  .toggle-track {
+    width: 38px;
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.15);
+    position: relative;
+    transition: background 0.25s;
+    flex-shrink: 0;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.25s;
+  }
+  .toggle-label input:checked + .toggle-track {
+    background: var(--accent);
+  }
+  .toggle-label input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(18px);
+  }
+
+  /* ---- Preset Bar ---- */
+  .preset-bar {
+    width: 100%;
+    max-width: 960px;
+    margin-bottom: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .preset-list {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 200px;
+  }
+
+  .preset-placeholder {
+    font-size: 13px;
+    color: #555;
+    user-select: none;
+  }
+
+  .preset-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 6px 8px 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #ccc;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .preset-chip:hover {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.25);
+  }
+  .preset-chip.active {
+    background: rgba(233,69,96,0.2);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .preset-chip-del {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: #888;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .preset-chip-del:hover {
+    background: rgba(233,69,96,0.5);
+    color: #fff;
+  }
+
+  .preset-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .preset-name-input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    width: 130px;
+    transition: border-color 0.2s;
+  }
+  .preset-name-input:focus {
+    border-color: var(--accent);
+  }
+
+  .btn-sm {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 700px) {
+    .preset-bar { flex-direction: column; align-items: stretch; }
+    .preset-actions { justify-content: flex-end; }
+  }
+
+  /* ---- Controls ---- */
+  .controls {
+    width: 100%;
+    max-width: 960px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 30px 35px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 30px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .control-group.full {
+    grid-column: 1 / -1;
+  }
+
+  .control-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .control-group input,
+  .control-group textarea {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #e0e0e0;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .control-group input:focus,
+  .control-group textarea:focus {
+    border-color: var(--accent);
+  }
+  .control-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .control-group input[type="color"] {
+    height: 44px;
+    padding: 4px 8px;
+    cursor: pointer;
+    width: 70px;
+  }
+
+  .control-group input[type="file"] {
+    padding: 8px 10px;
+    font-size: 13px;
+    flex: 1;
+  }
+  .control-group input[type="file"]::file-selector-button {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    color: #ccc;
+    padding: 6px 14px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+  .control-group input[type="file"]::file-selector-button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  .control-group input[type="range"] {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+
+  .range-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .range-val {
+    font-size: 13px;
+    color: #888;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .file-upload-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn-clear {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn-clear:hover {
+    background: rgba(233,69,96,0.3);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .color-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* ---- Buttons ---- */
+  .btn-row {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .btn {
+    padding: 12px 32px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #ff5a7a;
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.14);
+  }
+
+  /* ---- Toast ---- */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #333;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 30px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 999;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ---- Onboarding ---- */
+  .onboard-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .onboard-overlay.hidden { display: none; }
+
+  .onboard-card {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 40px 35px 30px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .onboard-slides { position: relative; min-height: 180px; width: 100%; }
+  .onboard-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.35s;
+    pointer-events: none;
+  }
+  .onboard-slide.active { opacity: 1; pointer-events: auto; position: relative; }
+
+  .onboard-icon { font-size: 48px; margin-bottom: 12px; }
+  .onboard-slide h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .onboard-slide p { font-size: 14px; color: #aaa; line-height: 1.7; }
+  .onboard-slide strong { color: var(--accent); }
+
+  .onboard-dots { display: flex; gap: 8px; }
+  .onboard-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.2); transition: all 0.25s;
+  }
+  .onboard-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+
+  .onboard-btns {
+    display: flex; gap: 12px; width: 100%; justify-content: center;
+    margin-top: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .controls { grid-template-columns: 1fr; }
+    .card-content { padding: 24px; gap: 20px; }
+    .left-panel { flex: 0 0 100px; }
+    .avatar { width: 80px; height: 80px; }
+    .quote-text { font-size: 18px; }
+    .quote-mark { font-size: 50px; }
+    .at-tag { font-size: 13px; padding: 4px 12px; }
+    .date-tag { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Onboarding Overlay -->
+<div class="onboard-overlay" id="onboardOverlay">
+  <div class="onboard-card">
+    <div class="onboard-slides" id="onboardSlides">
+      <div class="onboard-slide active">
+        <div class="onboard-icon">🎉</div>
+        <h2>欢迎使用引用卡片生成器</h2>
+        <p>快速生成精美的 16:9 引用卡片，<br>几步操作就能导出分享。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">📝</div>
+        <h2>编辑内容</h2>
+        <p>在下方表单输入<strong>引用文字</strong>、日期和 @昵称，<br>卡片上的内容会实时更新。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">🖼️</div>
+        <h2>上传图片</h2>
+        <p>点击上传<strong>头像</strong>和<strong>背景图</strong>，<br>支持本地文件，自动保存记忆。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">🎚️</div>
+        <h2>调整尺寸</h2>
+        <p>拖动<strong>滑块</strong>改变文字大小、<br>头像尺寸和 @标签大小。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">✋</div>
+        <h2>拖拽布局</h2>
+        <p><strong>长按</strong>头像、文字或 @标签，<br>拖拽到任意位置，自由排版。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">📌</div>
+        <h2>头像居中锁</h2>
+        <p>开启后头像锁定<strong>垂直居中</strong>，<br>只能左右拖动，不怕跑偏。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">💾</div>
+        <h2>保存预设</h2>
+        <p>调好配置后<strong>命名保存</strong>，<br>下次一键加载，不用重新设置。</p>
+      </div>
+      <div class="onboard-slide">
+        <div class="onboard-icon">📥</div>
+        <h2>导出分享</h2>
+        <p>点击<strong>导出 PNG</strong>，<br>自动弹出分享面板，保存到相册。</p>
+      </div>
+    </div>
+    <div class="onboard-dots" id="onboardDots"></div>
+    <div class="onboard-btns">
+      <button class="btn btn-secondary" id="btnOnboardSkip">跳过</button>
+      <button class="btn btn-primary" id="btnOnboardNext">下一步</button>
+    </div>
+  </div>
+</div>
+
+<h1>📝 16:9 引用卡片生成器 <button class="btn-help" id="btnShowOnboard">重现教程</button></h1>
+<p class="subtitle">编辑内容 → 实时预览 → 一键导出 PNG</p>
+
+<!-- Card -->
+<div class="card-wrapper">
+  <div id="card">
+    <div class="card-bg" id="cardBg"></div>
+    <div class="card-content">
+      <div class="left-panel draggable" data-drag="left">
+        <img class="avatar" id="avatar" src="" alt="头像" crossorigin="anonymous">
+      </div>
+      <div class="right-panel">
+        <div class="quote-mark">"</div>
+        <div class="quote-text draggable" id="quoteText" data-drag="quote">生活不是等待暴风雨过去，<br>而是学会在雨中起舞。</div>
+        <div class="meta-row draggable" data-drag="meta">
+          <span class="at-tag" id="atTag">@张三</span>
+          <span class="date-tag" id="dateTag">2024.06.15</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preset Bar -->
+<div class="preset-bar" id="presetBar">
+  <div class="preset-list" id="presetList">
+    <span class="preset-placeholder">暂无预设，保存后出现在这里</span>
+  </div>
+  <div class="preset-actions">
+    <input class="preset-name-input" id="presetNameInput" type="text" placeholder="预设名称...">
+    <button class="btn btn-sm btn-primary" id="btnSavePreset">💾 保存当前</button>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="control-group full">
+    <label>💬 引用文字</label>
+    <textarea id="inputQuote" placeholder="输入引用文字...">生活不是等待暴风雨过去，
+而是学会在雨中起舞。</textarea>
+  </div>
+  <div class="control-group">
+    <label>📅 日期</label>
+    <input id="inputDate" type="text" value="2024.06.15" placeholder="2024.06.15">
+    <label class="toggle-label" style="margin-top:6px;">
+      <input type="checkbox" id="inputDateWrap">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span>日期换行</span>
+    </label>
+  </div>
+  <div class="control-group">
+    <label>🖼️ 头像图片</label>
+    <div class="file-upload-row">
+      <input id="inputAvatar" type="file" accept="image/*">
+      <button type="button" class="btn-clear" id="btnClearAvatar" title="清除头像">✕</button>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🏷️ @ 昵称</label>
+    <input id="inputAt" type="text" value="@张三" placeholder="@昵称">
+  </div>
+  <div class="control-group">
+    <label>🎨 背景颜色 1</label>
+    <div class="color-row">
+      <input id="inputBgColor1" type="color" value="#1a1a2e">
+      <span style="font-size:13px;color:#888;">渐变色起点</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🎨 背景颜色 2</label>
+    <div class="color-row">
+      <input id="inputBgColor2" type="color" value="#16213e">
+      <span style="font-size:13px;color:#888;">渐变色终点</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🔤 文字大小</label>
+    <div class="range-row">
+      <input id="inputQuoteSize" type="range" min="12" max="28" value="24">
+      <span class="range-val" id="valQuoteSize">32px</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🖼️ 头像大小</label>
+    <div class="range-row">
+      <input id="inputAvatarSize" type="range" min="40" max="120" value="100">
+      <span class="range-val" id="valAvatarSize">170px</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🏷️ @标签大小</label>
+    <div class="range-row">
+      <input id="inputTagSize" type="range" min="8" max="12" value="12">
+      <span class="range-val" id="valTagSize">18px</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>📍 元素位置</label>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-secondary" id="btnResetPos">↺ 复位</button>
+      <label class="toggle-label">
+        <input type="checkbox" id="inputLockAvatarY">
+        <span class="toggle-track">
+          <span class="toggle-thumb"></span>
+        </span>
+        <span>头像居中</span>
+      </label>
+    </div>
+  </div>
+  <div class="control-group full">
+    <label>🖼️ 背景图片（会覆盖颜色）</label>
+    <div class="file-upload-row">
+      <input id="inputBgImage" type="file" accept="image/*">
+      <button type="button" class="btn-clear" id="btnClearBg" title="清除背景图">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- Buttons -->
+<div class="btn-row">
+  <button class="btn btn-primary" id="btnExport">📥 导出 PNG</button>
+  <button class="btn btn-secondary" id="btnReset">🔄 恢复默认</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- IndexedDB 图片存储 ----
+const DB_NAME = 'CardGeneratorDB';
+const DB_VERSION = 2;
+const STORE_NAME = 'images';
+const PRESET_STORE = 'presets';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+      if (!db.objectStoreNames.contains(PRESET_STORE)) {
+        db.createObjectStore(PRESET_STORE, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror = function(e) { reject(e.target.error); };
+  });
+}
+
+function saveImage(key, dataUrl) {
+  openDB().then(db => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(dataUrl, key);
+  }).catch(() => {});
+}
+
+function loadImage(key) {
+  return new Promise((resolve) => {
+    openDB().then(db => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(key);
+      req.onsuccess = function() { resolve(req.result || ''); };
+      req.onerror = function() { resolve(''); };
+    }).catch(() => resolve(''));
+  });
+}
+
+function deleteImage(key) {
+  openDB().then(db => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(key);
+  }).catch(() => {});
+}
+
+// ---- 预设 CRUD ----
+function getCurrentConfig() {
+  return {
+    quote: inputQuote.value,
+    date: inputDate.value,
+    atName: inputAt.value,
+    bgColor1: inputBgColor1.value,
+    bgColor2: inputBgColor2.value,
+    quoteSize: inputQuoteSize.value,
+    avatarSize: inputAvatarSize.value,
+    tagSize: inputTagSize.value,
+    dragPositions: JSON.parse(JSON.stringify(dragPositions)),
+    lockAvatarY: inputLockAvatarY.checked,
+    dateWrap: inputDateWrap.checked,
+    avatarDataUrl: avatarDataUrl,
+    bgImageDataUrl: bgImageDataUrl,
+  };
+}
+
+function applyConfig(cfg) {
+  inputQuote.value = cfg.quote || '';
+  inputDate.value = cfg.date || '';
+  inputAt.value = cfg.atName || '';
+  inputBgColor1.value = cfg.bgColor1 || '#1a1a2e';
+  inputBgColor2.value = cfg.bgColor2 || '#16213e';
+  inputQuoteSize.value = cfg.quoteSize || 32;
+  inputAvatarSize.value = cfg.avatarSize || 170;
+  inputTagSize.value = cfg.tagSize || 18;
+  if (cfg.dragPositions) dragPositions = JSON.parse(JSON.stringify(cfg.dragPositions));
+  else resetDragPositions();
+  inputLockAvatarY.checked = cfg.lockAvatarY || false;
+  inputDateWrap.checked = cfg.dateWrap || false;
+  inputAvatar.value = '';
+  inputBgImage.value = '';
+  avatarDataUrl = cfg.avatarDataUrl || '';
+  bgImageDataUrl = cfg.bgImageDataUrl || '';
+  updateCard();
+}
+
+function savePreset(name) {
+  const cfg = getCurrentConfig();
+  cfg.name = name;
+  cfg.createdAt = Date.now();
+  return new Promise((resolve, reject) => {
+    openDB().then(db => {
+      const tx = db.transaction(PRESET_STORE, 'readwrite');
+      const req = tx.objectStore(PRESET_STORE).add(cfg);
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    }).catch(reject);
+  });
+}
+
+function loadAllPresets() {
+  return new Promise((resolve) => {
+    openDB().then(db => {
+      const tx = db.transaction(PRESET_STORE, 'readonly');
+      const req = tx.objectStore(PRESET_STORE).getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { resolve([]); };
+    }).catch(() => resolve([]));
+  });
+}
+
+function deletePreset(id) {
+  return new Promise((resolve) => {
+    openDB().then(db => {
+      const tx = db.transaction(PRESET_STORE, 'readwrite');
+      tx.objectStore(PRESET_STORE).delete(id);
+      tx.oncomplete = function() { resolve(); };
+    }).catch(() => resolve());
+  });
+}
+
+// ---- DOM refs ----
+const card = document.getElementById('card');
+const cardBg = document.getElementById('cardBg');
+const avatar = document.getElementById('avatar');
+const quoteText = document.getElementById('quoteText');
+const atTag = document.getElementById('atTag');
+const dateTag = document.getElementById('dateTag');
+
+const inputQuote = document.getElementById('inputQuote');
+const inputDate = document.getElementById('inputDate');
+const inputAvatar = document.getElementById('inputAvatar');
+const inputAt = document.getElementById('inputAt');
+const inputBgColor1 = document.getElementById('inputBgColor1');
+const inputBgColor2 = document.getElementById('inputBgColor2');
+const inputBgImage = document.getElementById('inputBgImage');
+const btnClearAvatar = document.getElementById('btnClearAvatar');
+const btnClearBg = document.getElementById('btnClearBg');
+const btnExport = document.getElementById('btnExport');
+const btnReset = document.getElementById('btnReset');
+const toast = document.getElementById('toast');
+const presetList = document.getElementById('presetList');
+const presetNameInput = document.getElementById('presetNameInput');
+const btnSavePreset = document.getElementById('btnSavePreset');
+const inputQuoteSize = document.getElementById('inputQuoteSize');
+const inputAvatarSize = document.getElementById('inputAvatarSize');
+const inputTagSize = document.getElementById('inputTagSize');
+const valQuoteSize = document.getElementById('valQuoteSize');
+const valAvatarSize = document.getElementById('valAvatarSize');
+const valTagSize = document.getElementById('valTagSize');
+const btnResetPos = document.getElementById('btnResetPos');
+const inputLockAvatarY = document.getElementById('inputLockAvatarY');
+const inputDateWrap = document.getElementById('inputDateWrap');
+
+// ---- File data caches ----
+let avatarDataUrl = '';
+let bgImageDataUrl = '';
+
+// ---- Drag state ----
+let dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0] };
+let dragging = null;
+let dragStart = [0, 0];
+let dragOrig = [0, 0];
+
+// ---- FileReader helpers ----
+function handleFileSelect(file, callback) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) { callback(e.target.result); };
+  reader.readAsDataURL(file);
+}
+
+// ---- Default avatar (generated via canvas, square shape) ----
+function generateDefaultAvatar(name) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 200;
+  canvas.height = 200;
+  const ctx = canvas.getContext('2d');
+
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  const bgGrad = ctx.createLinearGradient(0, 0, 200, 200);
+  bgGrad.addColorStop(0, `hsl(${hue}, 60%, 50%)`);
+  bgGrad.addColorStop(1, `hsl(${(hue + 30) % 360}, 60%, 35%)`);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 200, 200);
+
+  const initial = name.charAt(0) || '?';
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 90px -apple-system, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(initial, 100, 100);
+
+  return canvas.toDataURL('image/png');
+}
+
+// ---- Update card ----
+function updateCard() {
+  // Quote
+  const quoteVal = inputQuote.value.trim() || '（在此输入引用文字）';
+  quoteText.innerHTML = quoteVal.replace(/\n/g, '<br>');
+
+  // Date
+  dateTag.textContent = inputDate.value.trim() || new Date().toISOString().slice(0, 10);
+
+  // @ tag
+  atTag.textContent = inputAt.value.trim() || '@昵称';
+
+  // Avatar
+  if (avatarDataUrl) {
+    avatar.src = avatarDataUrl;
+  } else {
+    avatar.src = generateDefaultAvatar(inputAt.value.trim() || '?');
+  }
+
+  // Sizes
+  const qs = inputQuoteSize.value + 'px';
+  const as = inputAvatarSize.value + 'px';
+  const ts = inputTagSize.value + 'px';
+  quoteText.style.fontSize = qs;
+  avatar.style.width = as;
+  avatar.style.height = as;
+  atTag.style.fontSize = ts;
+  dateTag.style.fontSize = ts;
+  valQuoteSize.textContent = qs;
+  valAvatarSize.textContent = as;
+  valTagSize.textContent = ts;
+
+  // Drag positions
+  applyDragPositions();
+
+  // Date wrap toggle
+  const metaRow = document.querySelector('.meta-row');
+  if (metaRow) {
+    if (inputDateWrap.checked) {
+      metaRow.style.flexDirection = 'column';
+      metaRow.style.alignItems = 'flex-end';
+      metaRow.style.gap = '4px';
+    } else {
+      metaRow.style.flexDirection = 'row';
+      metaRow.style.alignItems = 'baseline';
+      metaRow.style.gap = '16px';
+    }
+  }
+
+  // Background
+  if (bgImageDataUrl) {
+    cardBg.style.backgroundImage = `url(${bgImageDataUrl})`;
+    cardBg.style.backgroundColor = '';
+    cardBg.classList.add('has-image');
+  } else {
+    const c1 = inputBgColor1.value;
+    const c2 = inputBgColor2.value;
+    cardBg.style.backgroundImage = `linear-gradient(135deg, ${c1}, ${c2})`;
+    cardBg.style.backgroundColor = '';
+    cardBg.classList.remove('has-image');
+  }
+}
+
+function applyDragPositions() {
+  document.querySelectorAll('[data-drag]').forEach(el => {
+    const key = el.dataset.drag;
+    const [x, y] = dragPositions[key] || [0, 0];
+    el.style.transform = `translate(${x}px, ${y}px)`;
+  });
+}
+
+function resetDragPositions() {
+  dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0] };
+  applyDragPositions();
+}
+
+// ---- Event listeners ----
+[inputQuote, inputDate, inputAt,
+ inputBgColor1, inputBgColor2].forEach(el => {
+  el.addEventListener('input', updateCard);
+});
+
+// Size sliders
+[inputQuoteSize, inputAvatarSize, inputTagSize].forEach(el => {
+  el.addEventListener('input', updateCard);
+});
+
+// Position reset
+btnResetPos.addEventListener('click', () => {
+  resetDragPositions();
+  showToast('📍 位置已复位');
+});
+
+// Avatar Y-lock toggle
+inputLockAvatarY.addEventListener('change', function() {
+  if (this.checked) {
+    dragPositions.left[1] = 0;
+    applyDragPositions();
+  }
+});
+
+inputDateWrap.addEventListener('change', updateCard);
+
+// ---- Drag system ----
+function getPos(e) {
+  const t = e.touches ? e.touches[0] : e;
+  return [t.clientX, t.clientY];
+}
+
+card.addEventListener('mousedown', function(e) { startDrag(e, e); });
+card.addEventListener('touchstart', function(e) { startDrag(e, e.touches[0]); }, { passive: false });
+
+function startDrag(origEvent, posEvent) {
+  const el = origEvent.target.closest('[data-drag]');
+  if (!el) return;
+  origEvent.preventDefault();
+  dragging = el;
+  el.classList.add('dragging');
+  dragStart = [posEvent.clientX, posEvent.clientY];
+  const key = el.dataset.drag;
+  dragOrig = [...(dragPositions[key] || [0, 0])];
+}
+
+window.addEventListener('mousemove', function(e) {
+  if (!dragging) return;
+  const dx = e.clientX - dragStart[0];
+  const dy = e.clientY - dragStart[1];
+  const key = dragging.dataset.drag;
+  let newX = dragOrig[0] + dx;
+  let newY = dragOrig[1] + dy;
+  // 头像居中锁：只允许横向拖动
+  if (key === 'left' && inputLockAvatarY.checked) {
+    newY = 0;
+  }
+  dragPositions[key] = [newX, newY];
+  dragging.style.transform = `translate(${newX}px, ${newY}px)`;
+});
+
+window.addEventListener('touchmove', function(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - dragStart[0];
+  const dy = t.clientY - dragStart[1];
+  const key = dragging.dataset.drag;
+  let newX = dragOrig[0] + dx;
+  let newY = dragOrig[1] + dy;
+  if (key === 'left' && inputLockAvatarY.checked) {
+    newY = 0;
+  }
+  dragPositions[key] = [newX, newY];
+  dragging.style.transform = `translate(${newX}px, ${newY}px)`;
+}, { passive: false });
+
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchend', endDrag);
+
+function endDrag() {
+  if (!dragging) return;
+  dragging.classList.remove('dragging');
+  dragging = null;
+}
+
+// File uploads
+inputAvatar.addEventListener('change', function() {
+  const file = this.files[0];
+  if (file) {
+    handleFileSelect(file, function(dataUrl) {
+      avatarDataUrl = dataUrl;
+      saveImage('avatar', dataUrl);
+      updateCard();
+    });
+  }
+});
+
+inputBgImage.addEventListener('change', function() {
+  const file = this.files[0];
+  if (file) {
+    handleFileSelect(file, function(dataUrl) {
+      bgImageDataUrl = dataUrl;
+      saveImage('background', dataUrl);
+      updateCard();
+    });
+  }
+});
+
+// Clear buttons
+btnClearAvatar.addEventListener('click', function() {
+  inputAvatar.value = '';
+  avatarDataUrl = '';
+  deleteImage('avatar');
+  updateCard();
+});
+
+btnClearBg.addEventListener('click', function() {
+  inputBgImage.value = '';
+  bgImageDataUrl = '';
+  deleteImage('background');
+  updateCard();
+});
+
+// ---- Export PNG ----
+btnExport.addEventListener('click', async () => {
+  btnExport.textContent = '⏳ 生成中...';
+  btnExport.disabled = true;
+  try {
+    const EXPORT_W = 2400;
+    const EXPORT_H = Math.round(EXPORT_W * 9 / 16);
+    const ratio = EXPORT_W / card.offsetWidth;
+
+    // Helper: get computed px value, scale it
+    const gpx = (el, prop) => parseFloat(getComputedStyle(el)[prop]) || 0;
+    const spx = (v) => (v * ratio) + 'px';
+
+    // --- Collect all scalable elements ---
+    const cardContent = card.querySelector('.card-content');
+    const leftPanel = card.querySelector('.left-panel');
+    const quoteMark = card.querySelector('.quote-mark');
+    const metaRow = card.querySelector('.meta-row');
+
+    // Save current inline styles, apply scaled versions
+    const saved = [];
+    const saveSet = (el, prop, val) => {
+      saved.push({ el, prop, v: el.style[prop] });
+      el.style[prop] = val;
+    };
+
+    // Card wrapper & card
+    const wrapper = card.closest('.card-wrapper');
+    saveSet(wrapper, 'maxWidth', EXPORT_W + 'px');
+    saveSet(card, 'width', EXPORT_W + 'px');
+    saveSet(card, 'height', EXPORT_H + 'px');
+    saveSet(card, 'aspectRatio', 'unset');
+    saveSet(card, 'overflow', 'hidden');
+
+    // Left panel flex-basis
+    saveSet(leftPanel, 'flexBasis', spx(gpx(leftPanel, 'flexBasis') || 240));
+
+    // Card content padding & gap
+    saveSet(cardContent, 'padding',
+      spx(gpx(cardContent, 'paddingTop')) + ' ' +
+      spx(gpx(cardContent, 'paddingRight')) + ' ' +
+      spx(gpx(cardContent, 'paddingBottom')) + ' ' +
+      spx(gpx(cardContent, 'paddingLeft')));
+    saveSet(cardContent, 'gap', spx(gpx(cardContent, 'gap') || 80));
+
+    // Avatar
+    const avW = gpx(avatar, 'width') || 100;
+    saveSet(avatar, 'width', spx(avW));
+    saveSet(avatar, 'height', spx(avW));
+    saveSet(avatar, 'borderRadius', spx(gpx(avatar, 'borderRadius') || 12));
+
+    // Quote mark
+    saveSet(quoteMark, 'fontSize', spx(gpx(quoteMark, 'fontSize') || 80));
+    saveSet(quoteMark, 'marginBottom', spx(gpx(quoteMark, 'marginBottom') || 20));
+
+    // Quote text (line-height inherits from CSS 1.8, auto-scales with font-size)
+    const qtFS = gpx(quoteText, 'fontSize') || 24;
+    saveSet(quoteText, 'fontSize', spx(qtFS));
+
+    // Meta row
+    saveSet(metaRow, 'marginTop', spx(gpx(metaRow, 'marginTop') || 40));
+    saveSet(metaRow, 'gap', spx(gpx(metaRow, 'gap') || 16));
+
+    // @ tag & date
+    const tgFS = gpx(atTag, 'fontSize') || 12;
+    saveSet(atTag, 'fontSize', spx(tgFS));
+    saveSet(atTag, 'padding', spx(gpx(atTag, 'paddingTop') || 8) + ' ' + spx(gpx(atTag, 'paddingRight') || 22) + ' ' + spx(gpx(atTag, 'paddingBottom') || 8) + ' ' + spx(gpx(atTag, 'paddingLeft') || 22));
+    saveSet(atTag, 'borderRadius', spx(gpx(atTag, 'borderRadius') || 20));
+    saveSet(atTag, 'maxWidth', spx(gpx(atTag, 'maxWidth') || 220));
+    saveSet(dateTag, 'fontSize', spx(tgFS));
+
+    // Drag positions
+    const origDrag = {};
+    document.querySelectorAll('[data-drag]').forEach(el => {
+      const key = el.dataset.drag;
+      origDrag[key] = [...(dragPositions[key] || [0, 0])];
+      dragPositions[key] = [origDrag[key][0] * ratio, origDrag[key][1] * ratio];
+    });
+    applyDragPositions();
+
+    // Force re-layout
+    card.offsetHeight;
+    await new Promise(r => setTimeout(r, 200));
+
+    // Capture
+    const canvas = await html2canvas(card, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      width: EXPORT_W,
+      height: EXPORT_H,
+    });
+
+    // --- Restore ---
+    saved.forEach(s => { s.el.style[s.prop] = s.v; });
+    dragPositions = origDrag;
+    applyDragPositions();
+    // Re-apply original card size (restore aspect-ratio for responsive)
+    card.style.aspectRatio = '16/9';
+    card.style.width = '';
+    card.style.height = '';
+
+    // Convert & share/download
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+    if (isNative) {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(blob);
+      });
+      const fileName = `card_${Date.now()}.png`;
+      const { Filesystem } = Capacitor.Plugins;
+      const { Share } = Capacitor.Plugins;
+      try {
+        const result = await Filesystem.writeFile({ path: fileName, data: base64, directory: 'Cache' });
+        await Share.share({ title: '赛博琥珀卡片', text: '', url: result.uri, dialogTitle: '保存 / 分享卡片' });
+        showToast('✅ 已导出，可保存到相册');
+      } catch (e) {
+        try {
+          await Filesystem.writeFile({ path: fileName, data: base64, directory: 'Documents' });
+          showToast('✅ 已保存到 Documents');
+        } catch (e2) {
+          showToast('❌ 保存失败: ' + e2.message);
+        }
+      }
+    } else {
+      const link = document.createElement('a');
+      link.download = `引用卡片_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('✅ PNG 已下载！尺寸: ' + canvas.width + '×' + canvas.height);
+    }
+  } catch (err) {
+    showToast('❌ 导出失败: ' + err.message);
+  }
+  btnExport.textContent = '📥 导出 PNG';
+  btnExport.disabled = false;
+});
+
+// ---- Reset ----
+btnReset.addEventListener('click', () => {
+  inputQuote.value = '生活不是等待暴风雨过去，\n而是学会在雨中起舞。';
+  inputDate.value = '2024.06.15';
+  inputAt.value = '@张三';
+  inputBgColor1.value = '#1a1a2e';
+  inputBgColor2.value = '#16213e';
+  inputQuoteSize.value = 24;
+  inputAvatarSize.value = 100;
+  inputTagSize.value = 12;
+  inputAvatar.value = '';
+  inputBgImage.value = '';
+  avatarDataUrl = '';
+  bgImageDataUrl = '';
+  resetDragPositions();
+  inputLockAvatarY.checked = false;
+  inputDateWrap.checked = false;
+  updateCard();
+  showToast('🔄 已恢复默认');
+});
+
+// ---- Toast ----
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ---- Preset UI ----
+async function renderPresets() {
+  const presets = await loadAllPresets();
+  if (presets.length === 0) {
+    presetList.innerHTML = '<span class="preset-placeholder">暂无预设，保存后出现在这里</span>';
+    return;
+  }
+  presetList.innerHTML = presets.map(p => {
+    const name = p.name || '未命名';
+    const label = name.length > 8 ? name.slice(0, 8) + '…' : name;
+    return `<span class="preset-chip" data-id="${p.id}" title="${name}">
+      ${label}
+      <button class="preset-chip-del" data-del="${p.id}" title="删除预设">✕</button>
+    </span>`;
+  }).join('');
+}
+
+// Save preset
+btnSavePreset.addEventListener('click', async () => {
+  const name = presetNameInput.value.trim();
+  if (!name) { showToast('⚠️ 请先输入预设名称'); return; }
+  await savePreset(name);
+  presetNameInput.value = '';
+  await renderPresets();
+  showToast('💾 预设「' + name + '」已保存');
+});
+
+// Click on preset chip (load or delete)
+presetList.addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-del]');
+  const chip = e.target.closest('[data-id]');
+
+  if (delBtn) {
+    e.stopPropagation();
+    const id = Number(delBtn.dataset.del);
+    await deletePreset(id);
+    await renderPresets();
+    showToast('🗑️ 预设已删除');
+    return;
+  }
+
+  if (chip) {
+    const id = Number(chip.dataset.id);
+    const presets = await loadAllPresets();
+    const preset = presets.find(p => p.id === id);
+    if (preset) {
+      applyConfig(preset);
+      // Highlight active chip
+      presetList.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      showToast('✅ 已加载预设「' + (preset.name || '未命名') + '」');
+    }
+  }
+});
+
+// ---- Init ----
+(async function init() {
+  // 从 IndexedDB 恢复之前上传的图片
+  const savedAvatar = await loadImage('avatar');
+  const savedBg = await loadImage('background');
+  if (savedAvatar) avatarDataUrl = savedAvatar;
+  if (savedBg) bgImageDataUrl = savedBg;
+  updateCard();
+  await renderPresets();
+  if (savedAvatar || savedBg) {
+    showToast('📦 已加载上次保存的图片');
+  }
+  // Onboarding
+  initOnboarding();
+})();
+
+// ---- Onboarding ----
+let onboardStep, onboardTotal, onboardOverlay, onboardSlides, onboardDotsEls, onboardBtnNext;
+
+function initOnboarding() {
+  onboardOverlay = document.getElementById('onboardOverlay');
+  onboardSlides = document.querySelectorAll('#onboardSlides .onboard-slide');
+  const dots = document.getElementById('onboardDots');
+  onboardBtnNext = document.getElementById('btnOnboardNext');
+  const btnSkip = document.getElementById('btnOnboardSkip');
+  onboardStep = 0;
+  onboardTotal = onboardSlides.length;
+
+  if (localStorage.getItem('onboard_done')) {
+    onboardOverlay.classList.add('hidden');
+  }
+
+  // Create dots (only once)
+  if (!dots.children.length) {
+    for (let i = 0; i < onboardTotal; i++) {
+      const d = document.createElement('span');
+      d.className = 'onboard-dot' + (i === 0 ? ' active' : '');
+      dots.appendChild(d);
+    }
+  }
+  onboardDotsEls = dots.querySelectorAll('.onboard-dot');
+
+  onboardBtnNext.addEventListener('click', () => {
+    if (onboardStep < onboardTotal - 1) {
+      onboardGoTo(onboardStep + 1);
+    } else {
+      onboardOverlay.classList.add('hidden');
+      localStorage.setItem('onboard_done', '1');
+    }
+  });
+
+  btnSkip.addEventListener('click', () => {
+    onboardOverlay.classList.add('hidden');
+    localStorage.setItem('onboard_done', '1');
+  });
+
+  document.getElementById('btnShowOnboard').addEventListener('click', () => {
+    onboardGoTo(0);
+    onboardOverlay.classList.remove('hidden');
+  });
+}
+
+function onboardGoTo(s) {
+  onboardSlides[onboardStep].classList.remove('active');
+  onboardDotsEls[onboardStep].classList.remove('active');
+  onboardStep = s;
+  onboardSlides[onboardStep].classList.add('active');
+  onboardDotsEls[onboardStep].classList.add('active');
+  onboardBtnNext.textContent = onboardStep === onboardTotal - 1 ? '开始使用' : '下一步';
+}
+</script>
+
+</body>
+</html>
