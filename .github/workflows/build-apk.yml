@@ -36,14 +36,17 @@ jobs:
           RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
           RELEASE_KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASS }}
         run: |
-          echo "$RELEASE_KEYSTORE_B64" | base64 -d > release.keystore
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 -d > release.keystore
+          ls -la release.keystore
           echo "RELEASE_KEYSTORE_PASS=$RELEASE_KEYSTORE_PASS" >> $GITHUB_ENV
 
       - name: Build APK
         working-directory: android
         env:
           RELEASE_KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASS }}
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          ls -la ../release.keystore
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
