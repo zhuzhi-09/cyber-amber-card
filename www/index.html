@@ -790,6 +790,9 @@
 <div class="btn-row">
   <button class="btn btn-primary" id="btnExport">📥 导出 PNG</button>
   <button class="btn btn-secondary" id="btnReset">🔄 恢复默认</button>
+  <button class="btn btn-secondary" id="btnExportData">📤 导出数据</button>
+  <button class="btn btn-secondary" id="btnImportData">📥 导入数据</button>
+  <input type="file" id="importFileInput" accept=".json" style="display:none;">
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1356,6 +1359,111 @@ btnReset.addEventListener('click', () => {
   inputDateWrap.checked = false;
   updateCard();
   showToast('🔄 已恢复默认');
+});
+
+// ---- Data Export/Import ----
+const btnExportData = document.getElementById('btnExportData');
+const btnImportData = document.getElementById('btnImportData');
+const importFileInput = document.getElementById('importFileInput');
+
+// Load all stores from IndexedDB
+async function dumpAllData() {
+  const presets = await loadAllPresets();
+  const avatarImg = await loadImage('avatar');
+  const bgImg = await loadImage('background');
+  return {
+    version: '1.1.0',
+    exportedAt: new Date().toISOString(),
+    presets: presets,
+    images: { avatar: avatarImg, background: bgImg },
+  };
+}
+
+// Restore all data to IndexedDB
+async function restoreAllData(data) {
+  if (data.images) {
+    if (data.images.avatar) await saveImage('avatar', data.images.avatar);
+    if (data.images.background) await saveImage('background', data.images.background);
+  }
+  if (data.presets) {
+    for (const p of data.presets) {
+      await new Promise((resolve) => {
+        openDB().then(db => {
+          // Remove id to let DB auto-generate
+          const { id, ...rest } = p;
+          const tx = db.transaction(PRESET_STORE, 'readwrite');
+          tx.objectStore(PRESET_STORE).add(rest);
+          tx.oncomplete = () => resolve();
+        });
+      });
+    }
+  }
+}
+
+btnExportData.addEventListener('click', async () => {
+  try {
+    const data = await dumpAllData();
+    const json = JSON.stringify(data);
+    const blob = new Blob([json], { type: 'application/json' });
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+    if (isNative) {
+      const base64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(blob);
+      });
+      const fileName = `card-backup-${Date.now()}.json`;
+      const { Filesystem } = Capacitor.Plugins;
+      const { Share } = Capacitor.Plugins;
+      const result = await Filesystem.writeFile({ path: fileName, data: base64, directory: 'Cache' });
+      await Share.share({ title: '导出数据备份', text: '', url: result.uri, dialogTitle: '保存备份文件' });
+      showToast('📤 数据已导出');
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `card-generator-backup-${Date.now()}.json`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('📤 数据已下载');
+    }
+  } catch (e) {
+    showToast('❌ 导出失败: ' + e.message);
+  }
+});
+
+btnImportData.addEventListener('click', () => {
+  importFileInput.click();
+});
+
+importFileInput.addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  try {
+    const text = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+    const data = JSON.parse(text);
+    if (!data.version && !data.presets) {
+      throw new Error('无效的备份文件');
+    }
+    await restoreAllData(data);
+    // Reload UI
+    const savedAvatar = await loadImage('avatar');
+    const savedBg = await loadImage('background');
+    if (savedAvatar) avatarDataUrl = savedAvatar;
+    if (savedBg) bgImageDataUrl = savedBg;
+    await renderPresets();
+    updateCard();
+    showToast('📥 数据已导入（' + (data.presets ? data.presets.length : 0) + ' 个预设）');
+  } catch (e) {
+    showToast('❌ 导入失败: ' + e.message);
+  }
+  this.value = '';
 });
 
 // ---- Toast ----
