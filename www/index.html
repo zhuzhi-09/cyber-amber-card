@@ -410,6 +410,22 @@
     min-height: 80px;
   }
 
+  .control-group select {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #e0e0e0;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .control-group select:focus {
+    border-color: var(--accent);
+  }
+
   .control-group input[type="color"] {
     height: 44px;
     padding: 4px 8px;
@@ -541,6 +557,13 @@
     z-index: 999;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .version-footer {
+    margin-top: 24px;
+    font-size: 12px;
+    color: #444;
+    letter-spacing: 1px;
+  }
 
   /* ---- Onboarding ---- */
   .onboard-overlay {
@@ -710,6 +733,16 @@
 而是学会在雨中起舞。</textarea>
   </div>
   <div class="control-group">
+    <label>📐 图片比例</label>
+    <select id="inputAspectRatio">
+      <option value="16:9" selected>16:9 横屏</option>
+      <option value="4:3">4:3 横屏</option>
+      <option value="3:4">3:4 竖屏</option>
+      <option value="9:16">9:16 竖屏</option>
+      <option value="auto">自适应背景图</option>
+    </select>
+  </div>
+  <div class="control-group">
     <label>📅 日期</label>
     <input id="inputDate" type="text" value="2024.06.15" placeholder="2024.06.15">
     <label class="toggle-label" style="margin-top:6px;">
@@ -795,6 +828,8 @@
   <input type="file" id="importFileInput" accept=".json" style="display:none;">
 </div>
 
+<div class="version-footer" id="versionFooter">v1.2.0</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -860,6 +895,7 @@ function getCurrentConfig() {
     dragPositions: JSON.parse(JSON.stringify(dragPositions)),
     lockAvatarY: inputLockAvatarY.checked,
     dateWrap: inputDateWrap.checked,
+    aspectRatio: inputAspectRatio.value,
     avatarDataUrl: avatarDataUrl,
     bgImageDataUrl: bgImageDataUrl,
   };
@@ -878,6 +914,7 @@ function applyConfig(cfg) {
   else resetDragPositions();
   inputLockAvatarY.checked = cfg.lockAvatarY || false;
   inputDateWrap.checked = cfg.dateWrap || false;
+  inputAspectRatio.value = cfg.aspectRatio || '16:9';
   inputAvatar.value = '';
   inputBgImage.value = '';
   avatarDataUrl = cfg.avatarDataUrl || '';
@@ -952,10 +989,12 @@ const valTagSize = document.getElementById('valTagSize');
 const btnResetPos = document.getElementById('btnResetPos');
 const inputLockAvatarY = document.getElementById('inputLockAvatarY');
 const inputDateWrap = document.getElementById('inputDateWrap');
+const inputAspectRatio = document.getElementById('inputAspectRatio');
 
 // ---- File data caches ----
 let avatarDataUrl = '';
 let bgImageDataUrl = '';
+let bgImageNaturalRatio = null; // detected background image aspect ratio
 
 // ---- Drag state ----
 let dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0] };
@@ -997,8 +1036,37 @@ function generateDefaultAvatar(name) {
   return canvas.toDataURL('image/png');
 }
 
+// ---- Aspect ratio helpers ----
+function getEffectiveAspectRatio() {
+  const mode = inputAspectRatio.value;
+  if (mode === 'auto' && bgImageNaturalRatio) {
+    return bgImageNaturalRatio;
+  }
+  const [w, h] = mode.split(':').map(Number);
+  return w / h;
+}
+
+function getExportDimensions(ratio) {
+  const LONG = 2400;
+  if (ratio >= 1) {
+    return { w: LONG, h: Math.round(LONG / ratio) };
+  } else {
+    return { w: Math.round(LONG * ratio), h: LONG };
+  }
+}
+
+// Detect background image aspect ratio
+function detectBgRatio(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => { resolve(img.naturalWidth / img.naturalHeight); };
+    img.onerror = () => { resolve(null); };
+    img.src = dataUrl;
+  });
+}
+
 // ---- Update card ----
-function updateCard() {
+async function updateCard() {
   // Quote
   const quoteVal = inputQuote.value.trim() || '（在此输入引用文字）';
   quoteText.innerHTML = quoteVal.replace(/\n/g, '<br>');
@@ -1046,6 +1114,10 @@ function updateCard() {
     }
   }
 
+  // Aspect ratio
+  const ratio = getEffectiveAspectRatio();
+  card.style.aspectRatio = ratio.toFixed(4);
+
   // Background
   if (bgImageDataUrl) {
     cardBg.style.backgroundImage = `url(${bgImageDataUrl})`;
@@ -1078,6 +1150,8 @@ function resetDragPositions() {
  inputBgColor1, inputBgColor2].forEach(el => {
   el.addEventListener('input', updateCard);
 });
+
+inputAspectRatio.addEventListener('change', updateCard);
 
 // Size sliders
 [inputQuoteSize, inputAvatarSize, inputTagSize].forEach(el => {
@@ -1175,8 +1249,9 @@ inputAvatar.addEventListener('change', function() {
 inputBgImage.addEventListener('change', function() {
   const file = this.files[0];
   if (file) {
-    handleFileSelect(file, function(dataUrl) {
+    handleFileSelect(file, async function(dataUrl) {
       bgImageDataUrl = dataUrl;
+      bgImageNaturalRatio = await detectBgRatio(dataUrl);
       saveImage('background', dataUrl);
       updateCard();
     });
@@ -1194,6 +1269,7 @@ btnClearAvatar.addEventListener('click', function() {
 btnClearBg.addEventListener('click', function() {
   inputBgImage.value = '';
   bgImageDataUrl = '';
+  bgImageNaturalRatio = null;
   deleteImage('background');
   updateCard();
 });
@@ -1203,8 +1279,10 @@ btnExport.addEventListener('click', async () => {
   btnExport.textContent = '⏳ 生成中...';
   btnExport.disabled = true;
   try {
-    const EXPORT_W = 2400;
-    const EXPORT_H = Math.round(EXPORT_W * 9 / 16);
+    const aspectR = getEffectiveAspectRatio();
+    const dims = getExportDimensions(aspectR);
+    const EXPORT_W = dims.w;
+    const EXPORT_H = dims.h;
     const ratio = EXPORT_W / card.offsetWidth;
 
     // Helper: get computed px value, scale it
@@ -1357,6 +1435,8 @@ btnReset.addEventListener('click', () => {
   resetDragPositions();
   inputLockAvatarY.checked = false;
   inputDateWrap.checked = false;
+  inputAspectRatio.value = '16:9';
+  bgImageNaturalRatio = null;
   updateCard();
   showToast('🔄 已恢复默认');
 });
@@ -1535,7 +1615,7 @@ presetList.addEventListener('click', async (e) => {
   const savedAvatar = await loadImage('avatar');
   const savedBg = await loadImage('background');
   if (savedAvatar) avatarDataUrl = savedAvatar;
-  if (savedBg) bgImageDataUrl = savedBg;
+  if (savedBg) { bgImageDataUrl = savedBg; bgImageNaturalRatio = await detectBgRatio(savedBg); }
   updateCard();
   await renderPresets();
   if (savedAvatar || savedBg) {

@@ -31,7 +31,10 @@ jobs:
         run: npm ci
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          sed -i "s|v1\.2\.0|v1.2.0-${SHA}|g" www/index.html
+          npx cap sync android
 
       - name: Restore signing keystore
         env:
