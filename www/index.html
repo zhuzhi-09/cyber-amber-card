@@ -28,6 +28,9 @@
     padding: 30px 20px;
   }
 
+  .icon { width: 16px; height: 16px; vertical-align: -3px; flex-shrink: 0; }
+  .icon-lg { width: 20px; height: 20px; }
+
   h1 {
     font-size: 24px;
     font-weight: 700;
@@ -672,47 +675,69 @@
 </head>
 <body>
 
+<!-- SVG Icon Sprite -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+  <symbol id="icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+  <symbol id="icon-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+  <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+  <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="icon-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="icon-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="icon-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></symbol>
+  <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="icon-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+  <symbol id="icon-font" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9.5" y1="20" x2="14.5" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></symbol>
+  <symbol id="icon-aspect" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></symbol>
+  <symbol id="icon-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+</svg>
+
 <!-- Onboarding Overlay -->
 <div class="onboard-overlay" id="onboardOverlay">
   <div class="onboard-card">
     <div class="onboard-slides" id="onboardSlides">
       <div class="onboard-slide active">
-        <div class="onboard-icon">🎉</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-star"/></svg></div>
         <h2>欢迎使用引用卡片生成器</h2>
         <p>快速生成精美的 16:9 引用卡片，<br>几步操作就能导出分享。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">📝</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-edit"/></svg></div>
         <h2>编辑内容</h2>
         <p>在下方表单输入<strong>引用文字</strong>、日期和 @昵称，<br>卡片上的内容会实时更新。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">🖼️</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-image"/></svg></div>
         <h2>上传图片</h2>
         <p>点击上传<strong>头像</strong>和<strong>背景图</strong>，<br>支持本地文件，自动保存记忆。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">🎚️</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-sliders"/></svg></div>
         <h2>调整尺寸</h2>
         <p>拖动<strong>滑块</strong>改变文字大小、<br>头像尺寸和 @标签大小。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">✋</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-pin"/></svg></div>
         <h2>拖拽布局</h2>
         <p><strong>长按</strong>头像、文字或 @标签，<br>拖拽到任意位置，自由排版。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">📌</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-pin"/></svg></div>
         <h2>头像居中锁</h2>
         <p>开启后头像锁定<strong>垂直居中</strong>，<br>只能左右拖动，不怕跑偏。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">💾</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-save"/></svg></div>
         <h2>保存预设</h2>
         <p>调好配置后<strong>命名保存</strong>，<br>下次一键加载，不用重新设置。</p>
       </div>
       <div class="onboard-slide">
-        <div class="onboard-icon">📥</div>
+        <div class="onboard-icon"><svg class="icon icon-lg"><use href="#icon-download"/></svg></div>
         <h2>导出分享</h2>
         <p>点击<strong>导出 PNG</strong>，<br>自动弹出分享面板，保存到相册。</p>
       </div>
@@ -725,7 +750,7 @@
   </div>
 </div>
 
-<h1>📝 16:9 引用卡片生成器 <button class="btn-help" id="btnShowOnboard">重现教程</button></h1>
+<h1><svg class="icon icon-lg"><use href="#icon-edit"/></svg> 16:9 引用卡片生成器 <button class="btn-help" id="btnShowOnboard">重现教程</button></h1>
 <p class="subtitle">编辑内容 → 实时预览 → 一键导出 PNG</p>
 
 <!-- Card -->
@@ -755,19 +780,19 @@
   </div>
   <div class="preset-actions">
     <input class="preset-name-input" id="presetNameInput" type="text" placeholder="预设名称...">
-    <button class="btn btn-sm btn-primary" id="btnSavePreset">💾 保存当前</button>
+    <button class="btn btn-sm btn-primary" id="btnSavePreset"><svg class="icon"><use href="#icon-save"/></svg> 保存当前</button>
   </div>
 </div>
 
 <!-- Controls -->
 <div class="controls">
   <div class="control-group full">
-    <label>💬 引用文字</label>
+    <label><svg class="icon"><use href="#icon-edit"/></svg> 引用文字</label>
     <textarea id="inputQuote" placeholder="输入引用文字...">生活不是等待暴风雨过去，
 而是学会在雨中起舞。</textarea>
   </div>
   <div class="control-group">
-    <label>📐 图片比例</label>
+    <label><svg class="icon"><use href="#icon-aspect"/></svg> 图片比例</label>
     <select id="inputAspectRatio">
       <option value="16:9" selected>16:9 横屏</option>
       <option value="4:3">4:3 横屏</option>
@@ -777,7 +802,7 @@
     </select>
   </div>
   <div class="control-group">
-    <label>📅 日期</label>
+    <label><svg class="icon"><use href="#icon-calendar"/></svg> 日期</label>
     <input id="inputDate" type="text" value="2024.06.15" placeholder="2024.06.15">
     <label class="toggle-label" style="margin-top:6px;">
       <input type="checkbox" id="inputDateWrap">
@@ -786,32 +811,32 @@
     </label>
   </div>
   <div class="control-group">
-    <label>🖼️ 头像图片</label>
+    <label><svg class="icon"><use href="#icon-image"/></svg> 头像图片</label>
     <div class="file-upload-row">
       <input id="inputAvatar" type="file" accept="image/*">
       <button type="button" class="btn-clear" id="btnClearAvatar" title="清除头像">✕</button>
     </div>
   </div>
   <div class="control-group">
-    <label>🏷️ @ 昵称</label>
+    <label><svg class="icon"><use href="#icon-tag"/></svg> @ 昵称</label>
     <input id="inputAt" type="text" value="@张三" placeholder="@昵称">
   </div>
   <div class="control-group">
-    <label>🎨 背景颜色 1</label>
+    <label><svg class="icon"><use href="#icon-palette"/></svg> 背景颜色 1</label>
     <div class="color-row">
       <input id="inputBgColor1" type="color" value="#1a1a2e">
       <span style="font-size:13px;color:#888;">渐变色起点</span>
     </div>
   </div>
   <div class="control-group">
-    <label>🎨 背景颜色 2</label>
+    <label><svg class="icon"><use href="#icon-palette"/></svg> 背景颜色 2</label>
     <div class="color-row">
       <input id="inputBgColor2" type="color" value="#16213e">
       <span style="font-size:13px;color:#888;">渐变色终点</span>
     </div>
   </div>
   <div class="control-group">
-    <label>🔤 文字大小</label>
+    <label><svg class="icon"><use href="#icon-font"/></svg> 文字大小</label>
     <div class="range-row">
       <input id="inputQuoteSize" type="range" min="12" max="28" value="24">
       <span class="range-val" id="valQuoteSize">32px</span>
@@ -823,7 +848,7 @@
     </label>
   </div>
   <div class="control-group">
-    <label>🖼️ 头像大小</label>
+    <label><svg class="icon"><use href="#icon-image"/></svg> 头像大小</label>
     <div class="range-row">
       <input id="inputAvatarSize" type="range" min="40" max="120" value="100">
       <span class="range-val" id="valAvatarSize">170px</span>
@@ -835,16 +860,16 @@
     </label>
   </div>
   <div class="control-group">
-    <label>🏷️ @标签大小</label>
+    <label><svg class="icon"><use href="#icon-tag"/></svg> @标签大小</label>
     <div class="range-row">
       <input id="inputTagSize" type="range" min="8" max="12" value="12">
       <span class="range-val" id="valTagSize">18px</span>
     </div>
   </div>
   <div class="control-group">
-    <label>📍 元素位置</label>
+    <label><svg class="icon"><use href="#icon-pin"/></svg> 元素位置</label>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button type="button" class="btn btn-sm btn-secondary" id="btnResetPos">↺ 复位</button>
+      <button type="button" class="btn btn-sm btn-secondary" id="btnResetPos"><svg class="icon"><use href="#icon-undo"/></svg> 复位</button>
       <label class="toggle-label">
         <input type="checkbox" id="inputLockAvatarY">
         <span class="toggle-track">
@@ -863,21 +888,21 @@
     </div>
   </div>
   <div class="control-group">
-    <label>🌓 背景遮罩</label>
+    <label><svg class="icon"><use href="#icon-sun"/></svg> 背景遮罩</label>
     <div class="range-row">
       <input id="inputOverlay" type="range" min="0" max="80" value="45">
       <span class="range-val" id="valOverlay">45%</span>
     </div>
   </div>
   <div class="control-group">
-    <label>💎 毛玻璃模糊</label>
+    <label><svg class="icon"><use href="#icon-droplet"/></svg> 毛玻璃模糊</label>
     <div class="range-row">
       <input id="inputBlur" type="range" min="0" max="100" value="0">
       <span class="range-val" id="valBlur">0%</span>
     </div>
   </div>
   <div class="control-group full">
-    <label>🖼️ 背景图片（会覆盖颜色）</label>
+    <label><svg class="icon"><use href="#icon-image"/></svg> 背景图片（会覆盖颜色）</label>
     <div class="file-upload-row">
       <input id="inputBgImage" type="file" accept="image/*">
       <button type="button" class="btn-clear" id="btnClearBg" title="清除背景图">✕</button>
@@ -887,11 +912,11 @@
 
 <!-- Buttons -->
 <div class="btn-row">
-  <button class="btn btn-primary" id="btnExport">📥 导出 PNG</button>
-  <button class="btn btn-secondary" id="btnReset">🔄 恢复默认</button>
-  <button class="btn btn-secondary" id="btnExportData">📤 导出数据</button>
-  <button class="btn btn-secondary" id="btnImportData">📥 导入数据</button>
-  <button class="btn btn-secondary" id="btnCheckUpdate">🔗 下载 APK</button>
+  <button class="btn btn-primary" id="btnExport"><svg class="icon"><use href="#icon-download"/></svg> 导出 PNG</button>
+  <button class="btn btn-secondary" id="btnReset"><svg class="icon"><use href="#icon-undo"/></svg> 恢复默认</button>
+  <button class="btn btn-secondary" id="btnExportData"><svg class="icon"><use href="#icon-upload"/></svg> 导出数据</button>
+  <button class="btn btn-secondary" id="btnImportData"><svg class="icon"><use href="#icon-download"/></svg> 导入数据</button>
+  <button class="btn btn-secondary" id="btnCheckUpdate"><svg class="icon"><use href="#icon-link"/></svg> 下载 APK</button>
   <input type="file" id="importFileInput" accept=".json" style="display:none;">
 </div>
 
@@ -1517,7 +1542,7 @@ btnExport.addEventListener('click', async () => {
   } catch (err) {
     showToast('❌ 导出失败: ' + err.message);
   }
-  btnExport.textContent = '📥 导出 PNG';
+  btnExport.textContent = '<svg class="icon"><use href="#icon-download"/></svg> 导出 PNG';
   btnExport.disabled = false;
 });
 
@@ -1652,7 +1677,7 @@ importFileInput.addEventListener('change', async function() {
     if (savedBg) bgImageDataUrl = savedBg;
     await renderPresets();
     updateCard();
-    showToast('📥 数据已导入（' + (data.presets ? data.presets.length : 0) + ' 个预设）');
+    showToast('<svg class="icon icon-lg"><use href="#icon-download"/></svg> 数据已导入（' + (data.presets ? data.presets.length : 0) + ' 个预设）');
   } catch (e) {
     showToast('❌ 导入失败: ' + e.message);
   }
@@ -1691,7 +1716,7 @@ btnSavePreset.addEventListener('click', async () => {
   await savePreset(name);
   presetNameInput.value = '';
   await renderPresets();
-  showToast('💾 预设「' + name + '」已保存');
+  showToast('<svg class="icon icon-lg"><use href="#icon-save"/></svg> 预设「' + name + '」已保存');
 });
 
 // Click on preset chip (load or delete)
