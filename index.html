@@ -1412,13 +1412,17 @@ btnExport.addEventListener('click', async () => {
     // Left panel flex-basis
     saveSet(leftPanel, 'flexBasis', spx(gpx(leftPanel, 'flexBasis') || 240));
 
-    // Card content padding & gap
+    // Card content padding & gap (skip gap if avatar hidden)
     saveSet(cardContent, 'padding',
       spx(gpx(cardContent, 'paddingTop')) + ' ' +
       spx(gpx(cardContent, 'paddingRight')) + ' ' +
       spx(gpx(cardContent, 'paddingBottom')) + ' ' +
       spx(gpx(cardContent, 'paddingLeft')));
-    saveSet(cardContent, 'gap', spx(gpx(cardContent, 'gap') || 80));
+    if (leftPanel.style.display === 'none') {
+      saveSet(cardContent, 'gap', '0px');
+    } else {
+      saveSet(cardContent, 'gap', spx(gpx(cardContent, 'gap') || 80));
+    }
 
     // Avatar
     const avW = gpx(avatar, 'width') || 100;
