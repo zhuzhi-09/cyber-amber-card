@@ -582,6 +582,23 @@
     letter-spacing: 1px;
   }
 
+  .update-bar {
+    width: 100%;
+    max-width: 960px;
+    margin-top: 12px;
+    background: rgba(233,69,96,0.15);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 14px;
+    color: #fff;
+    flex-wrap: wrap;
+  }
+
   /* ---- Onboarding ---- */
   .onboard-overlay {
     position: fixed;
@@ -874,7 +891,13 @@
   <button class="btn btn-secondary" id="btnReset">🔄 恢复默认</button>
   <button class="btn btn-secondary" id="btnExportData">📤 导出数据</button>
   <button class="btn btn-secondary" id="btnImportData">📥 导入数据</button>
+  <button class="btn btn-secondary" id="btnCheckUpdate">🔄 检查更新</button>
   <input type="file" id="importFileInput" accept=".json" style="display:none;">
+</div>
+
+<div class="update-bar" id="updateBar" style="display:none;">
+  <span id="updateMsg"></span>
+  <button class="btn btn-sm btn-primary" id="btnUpdateAction"></button>
 </div>
 
 <div class="version-footer" id="versionFooter">v1.2.1 funfair</div>
@@ -1525,6 +1548,91 @@ btnReset.addEventListener('click', () => {
   bgImageNaturalRatio = null;
   updateCard();
   showToast('🔄 已恢复默认');
+});
+
+// ---- Update Checker ----
+const CURRENT_VERSION = 'v1.2.1';
+const REPO_API = 'https://api.github.com/repos/zhuzhi-09/cyber-amber-card';
+const btnCheckUpdate = document.getElementById('btnCheckUpdate');
+const updateBar = document.getElementById('updateBar');
+const updateMsg = document.getElementById('updateMsg');
+const btnUpdateAction = document.getElementById('btnUpdateAction');
+
+btnCheckUpdate.addEventListener('click', async () => {
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  btnCheckUpdate.textContent = '⏳ 检查中...';
+  btnCheckUpdate.disabled = true;
+  updateBar.style.display = 'none';
+
+  try {
+    if (isNative) {
+      // Android: check latest non-prerelease GitHub release
+      const resp = await fetch(REPO_API + '/releases?per_page=20');
+      const releases = await resp.json();
+      const stable = releases.filter(r => !r.prerelease);
+      if (!stable.length) { showToast('✅ 暂无正式发布版本'); }
+      else if (stable[0].tag_name !== CURRENT_VERSION) {
+        const latest = stable[0];
+        const apkAsset = latest.assets.find(a => a.name.endsWith('.apk'));
+        if (!apkAsset) throw new Error('未找到 APK');
+        updateMsg.textContent = `新版本 ${latest.tag_name} 可用`;
+        btnUpdateAction.textContent = '📥 下载并安装';
+        btnUpdateAction.onclick = async () => {
+          btnUpdateAction.textContent = '⏳ 下载中...';
+          btnUpdateAction.disabled = true;
+          try {
+            const apkResp = await fetch(apkAsset.browser_download_url);
+            const blob = await apkResp.blob();
+            const base64 = await new Promise(resolve => {
+              const r = new FileReader();
+              r.onloadend = () => resolve(r.target.result.split(',')[1]);
+              r.readAsDataURL(blob);
+            });
+            const { Filesystem } = Capacitor.Plugins;
+            const fileName = 'cyber-amber-update.apk';
+            // Write to external Downloads
+            const result = await Filesystem.writeFile({
+              path: fileName,
+              data: base64,
+              directory: 'External',
+            });
+            // Get URI and trigger install
+            const uriResult = await Filesystem.getUri({
+              path: fileName,
+              directory: 'External',
+            });
+            // Open URI to trigger package installer
+            window.open(uriResult.uri, '_system');
+            showToast('✅ 下载完成，开始安装');
+          } catch (e) {
+            showToast('❌ 下载失败: ' + e.message);
+          }
+          btnUpdateAction.textContent = '📥 下载并安装';
+          btnUpdateAction.disabled = false;
+        };
+        updateBar.style.display = 'flex';
+      } else {
+        showToast('✅ 已是最新版本');
+      }
+    } else {
+      // Web: check latest non-prerelease GitHub release
+      const resp = await fetch(REPO_API + '/releases?per_page=20');
+      const releases = await resp.json();
+      const stable = releases.filter(r => !r.prerelease);
+      if (stable.length && stable[0].tag_name !== CURRENT_VERSION) {
+        updateMsg.textContent = `新版本 ${stable[0].tag_name} 可用`;
+        btnUpdateAction.textContent = '🔄 刷新页面';
+        btnUpdateAction.onclick = () => location.reload(true);
+        updateBar.style.display = 'flex';
+      } else {
+        showToast('✅ 已是最新版本');
+      }
+    }
+  } catch (e) {
+    showToast('❌ 检查更新失败: ' + e.message);
+  }
+  btnCheckUpdate.textContent = '🔄 检查更新';
+  btnCheckUpdate.disabled = false;
 });
 
 // ---- Data Export/Import ----
