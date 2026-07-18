@@ -1552,6 +1552,7 @@ btnReset.addEventListener('click', () => {
 
 // ---- Update Checker ----
 const CURRENT_VERSION = 'v1.2.1';
+const RELEASE_TAG = '__RELEASE_TAG__';
 const REPO_API = 'https://api.github.com/repos/zhuzhi-09/cyber-amber-card';
 const btnCheckUpdate = document.getElementById('btnCheckUpdate');
 const updateBar = document.getElementById('updateBar');
@@ -1566,54 +1567,48 @@ btnCheckUpdate.addEventListener('click', async () => {
 
   try {
     if (isNative) {
-      // Android: check latest non-prerelease GitHub release
-      const resp = await fetch(REPO_API + '/releases?per_page=20');
-      const data = await resp.json();
-      const releases = Array.isArray(data) ? data : [];
-      const stable = releases.filter(r => !r.prerelease);
-      if (!stable.length) { showToast('✅ 暂无正式发布版本'); }
-      else if (stable[0].tag_name !== CURRENT_VERSION) {
-        const latest = stable[0];
-        const apkAsset = latest.assets.find(a => a.name.endsWith('.apk'));
-        if (!apkAsset) throw new Error('未找到 APK');
-        updateMsg.textContent = `新版本 ${latest.tag_name} 可用`;
-        btnUpdateAction.textContent = '📥 下载并安装';
-        btnUpdateAction.onclick = async () => {
-          btnUpdateAction.textContent = '⏳ 下载中...';
-          btnUpdateAction.disabled = true;
-          try {
-            const apkResp = await fetch(apkAsset.browser_download_url);
-            const blob = await apkResp.blob();
-            const base64 = await new Promise(resolve => {
-              const r = new FileReader();
-              r.onloadend = () => resolve(r.target.result.split(',')[1]);
-              r.readAsDataURL(blob);
-            });
-            const { Filesystem } = Capacitor.Plugins;
-            const fileName = 'cyber-amber-update.apk';
-            // Write to external Downloads
-            const result = await Filesystem.writeFile({
-              path: fileName,
-              data: base64,
-              directory: 'External',
-            });
-            // Get URI and trigger install
-            const uriResult = await Filesystem.getUri({
-              path: fileName,
-              directory: 'External',
-            });
-            // Open URI to trigger package installer
-            window.open(uriResult.uri, '_system');
-            showToast('✅ 下载完成，开始安装');
-          } catch (e) {
-            showToast('❌ 下载失败: ' + e.message);
-          }
-          btnUpdateAction.textContent = '📥 下载并安装';
-          btnUpdateAction.disabled = false;
-        };
-        updateBar.style.display = 'flex';
+      // Android: check specific release tag
+      const tag = RELEASE_TAG && RELEASE_TAG !== '__RELEASE_TAG__' ? RELEASE_TAG : 'nightly';
+      const resp = await fetch(REPO_API + '/releases/tags/' + tag);
+      if (resp.status === 404) {
+        showToast('✅ 暂无发布版本');
       } else {
-        showToast('✅ 已是最新版本');
+        const latest = await resp.json();
+        if (latest.tag_name === CURRENT_VERSION || latest.tag_name.includes(CURRENT_VERSION)) {
+          showToast('✅ 已是最新版本');
+        } else {
+          const apkAsset = latest.assets.find(a => a.name.endsWith('.apk'));
+          if (!apkAsset) {
+            showToast('⚠️ 发布版本中无 APK');
+          } else {
+            updateMsg.textContent = `新版本 ${latest.tag_name} 可用`;
+            btnUpdateAction.textContent = '📥 下载并安装';
+            btnUpdateAction.onclick = async () => {
+              btnUpdateAction.textContent = '⏳ 下载中...';
+              btnUpdateAction.disabled = true;
+              try {
+                const apkResp = await fetch(apkAsset.browser_download_url);
+                const blob = await apkResp.blob();
+                const base64 = await new Promise(resolve => {
+                  const r = new FileReader();
+                  r.onloadend = () => resolve(r.target.result.split(',')[1]);
+                  r.readAsDataURL(blob);
+                });
+                const { Filesystem } = Capacitor.Plugins;
+                const fileName = 'cyber-amber-update.apk';
+                await Filesystem.writeFile({ path: fileName, data: base64, directory: 'External' });
+                const uriResult = await Filesystem.getUri({ path: fileName, directory: 'External' });
+                window.open(uriResult.uri, '_system');
+                showToast('✅ 下载完成，开始安装');
+              } catch (e) {
+                showToast('❌ 下载失败: ' + e.message);
+              }
+              btnUpdateAction.textContent = '📥 下载并安装';
+              btnUpdateAction.disabled = false;
+            };
+            updateBar.style.display = 'flex';
+          }
+        }
       }
     } else {
       // Web: check latest non-prerelease GitHub release
