@@ -62,7 +62,7 @@ jobs:
       - name: Generate release body
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
-          if [ "$BRANCH" = "dev" ]; then TAG="nightly-dev"; else TAG="nightly"; fi
+          if [ "$BRANCH" = "dev" ]; then TAG="real-time-dev"; else TAG="nightly"; fi
           echo "TAG=$TAG" >> $GITHUB_ENV
           echo "BODY=自动构建于 $(date -u '+%Y-%m-%d %H:%M UTC') | 分支 $BRANCH | commit $(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
