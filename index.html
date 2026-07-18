@@ -87,14 +87,17 @@
     background-size: cover;
     background-position: center;
     z-index: 0;
-    transition: background 0.4s;
+    transition: background 0.4s, filter 0.3s;
+    filter: blur(var(--blur-amount, 0px));
   }
   /* Dark overlay for text readability when bg image is set */
-  .card-bg.has-image::after {
+  .card-bg::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0, var(--overlay-opacity, 0));
+    transition: background 0.3s;
+    pointer-events: none;
   }
 
   /* Content layer */
@@ -191,6 +194,20 @@
     font-size: var(--tag-size, 12px);
     color: rgba(255,255,255,0.6);
     letter-spacing: 1px;
+  }
+
+  /* ---- 3D Shadow ---- */
+  .card-shadow .avatar {
+    filter: drop-shadow(-6px 8px 12px rgba(0,0,0,0.6));
+  }
+  .card-shadow .quote-text {
+    text-shadow: -4px 6px 10px rgba(0,0,0,0.5);
+  }
+  .card-shadow .at-tag {
+    filter: drop-shadow(-4px 6px 8px rgba(0,0,0,0.5));
+  }
+  .card-shadow .date-tag {
+    text-shadow: -3px 4px 6px rgba(0,0,0,0.4);
   }
 
   /* ---- Draggable ---- */
@@ -703,7 +720,7 @@
         <img class="avatar" id="avatar" src="" alt="头像" crossorigin="anonymous">
       </div>
       <div class="right-panel">
-        <div class="quote-mark">"</div>
+        <div class="quote-mark draggable" data-drag="quoteMark">"</div>
         <div class="quote-text draggable" id="quoteText" data-drag="quote">生活不是等待暴风雨过去，<br>而是学会在雨中起舞。</div>
         <div class="meta-row draggable" data-drag="meta">
           <span class="at-tag" id="atTag">@张三</span>
@@ -782,6 +799,11 @@
       <input id="inputQuoteSize" type="range" min="12" max="28" value="24">
       <span class="range-val" id="valQuoteSize">32px</span>
     </div>
+    <label class="toggle-label" style="margin-top:6px;">
+      <input type="checkbox" id="inputShowQuoteMark" checked>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span>显示引号</span>
+    </label>
   </div>
   <div class="control-group">
     <label>🖼️ 头像大小</label>
@@ -789,6 +811,11 @@
       <input id="inputAvatarSize" type="range" min="40" max="120" value="100">
       <span class="range-val" id="valAvatarSize">170px</span>
     </div>
+    <label class="toggle-label" style="margin-top:6px;">
+      <input type="checkbox" id="inputShowAvatar" checked>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span>显示头像</span>
+    </label>
   </div>
   <div class="control-group">
     <label>🏷️ @标签大小</label>
@@ -807,7 +834,29 @@
           <span class="toggle-thumb"></span>
         </span>
         <span>头像居中</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="inputShadow" checked>
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span>立体阴影</span>
+            </label>
       </label>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>🌓 背景遮罩</label>
+    <div class="range-row">
+      <input id="inputOverlay" type="range" min="0" max="80" value="45">
+      <span class="range-val" id="valOverlay">45%</span>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>💎 毛玻璃模糊</label>
+    <div class="range-row">
+      <input id="inputBlur" type="range" min="0" max="100" value="0">
+      <span class="range-val" id="valBlur">0%</span>
     </div>
   </div>
   <div class="control-group full">
@@ -828,7 +877,7 @@
   <input type="file" id="importFileInput" accept=".json" style="display:none;">
 </div>
 
-<div class="version-footer" id="versionFooter">v1.2.0</div>
+<div class="version-footer" id="versionFooter">v1.2.1 funfair</div>
 
 <div class="toast" id="toast"></div>
 
@@ -896,6 +945,11 @@ function getCurrentConfig() {
     lockAvatarY: inputLockAvatarY.checked,
     dateWrap: inputDateWrap.checked,
     aspectRatio: inputAspectRatio.value,
+    showAvatar: inputShowAvatar.checked,
+    showQuoteMark: inputShowQuoteMark.checked,
+    shadow: inputShadow.checked,
+    overlay: inputOverlay.value,
+    blur: inputBlur.value,
     avatarDataUrl: avatarDataUrl,
     bgImageDataUrl: bgImageDataUrl,
   };
@@ -915,6 +969,11 @@ function applyConfig(cfg) {
   inputLockAvatarY.checked = cfg.lockAvatarY || false;
   inputDateWrap.checked = cfg.dateWrap || false;
   inputAspectRatio.value = cfg.aspectRatio || '16:9';
+  inputShowAvatar.checked = cfg.showAvatar !== false;
+  inputShowQuoteMark.checked = cfg.showQuoteMark !== false;
+  inputShadow.checked = cfg.shadow !== false;
+  inputOverlay.value = cfg.overlay || 45;
+  inputBlur.value = cfg.blur || 0;
   inputAvatar.value = '';
   inputBgImage.value = '';
   avatarDataUrl = cfg.avatarDataUrl || '';
@@ -990,6 +1049,13 @@ const btnResetPos = document.getElementById('btnResetPos');
 const inputLockAvatarY = document.getElementById('inputLockAvatarY');
 const inputDateWrap = document.getElementById('inputDateWrap');
 const inputAspectRatio = document.getElementById('inputAspectRatio');
+const inputShowAvatar = document.getElementById('inputShowAvatar');
+const inputShowQuoteMark = document.getElementById('inputShowQuoteMark');
+const inputOverlay = document.getElementById('inputOverlay');
+const valOverlay = document.getElementById('valOverlay');
+const inputBlur = document.getElementById('inputBlur');
+const valBlur = document.getElementById('valBlur');
+const inputShadow = document.getElementById('inputShadow');
 
 // ---- File data caches ----
 let avatarDataUrl = '';
@@ -997,7 +1063,7 @@ let bgImageDataUrl = '';
 let bgImageNaturalRatio = null; // detected background image aspect ratio
 
 // ---- Drag state ----
-let dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0] };
+let dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0], quoteMark: [0, 0] };
 let dragging = null;
 let dragStart = [0, 0];
 let dragOrig = [0, 0];
@@ -1083,6 +1149,12 @@ async function updateCard() {
   } else {
     avatar.src = generateDefaultAvatar(inputAt.value.trim() || '?');
   }
+  const leftPanel = card.querySelector('.left-panel');
+  if (leftPanel) leftPanel.style.display = inputShowAvatar.checked ? '' : 'none';
+  const quoteMarkEl = card.querySelector('.quote-mark');
+  if (quoteMarkEl) quoteMarkEl.style.display = inputShowQuoteMark.checked ? '' : 'none';
+  // 3D shadow
+  card.classList.toggle('card-shadow', inputShadow.checked);
 
   // Sizes
   const qs = inputQuoteSize.value + 'px';
@@ -1118,17 +1190,23 @@ async function updateCard() {
   const ratio = getEffectiveAspectRatio();
   card.style.aspectRatio = ratio.toFixed(4);
 
+  // Background overlay & blur
+  const overlayVal = inputOverlay.value / 100;
+  cardBg.style.setProperty('--overlay-opacity', overlayVal);
+  valOverlay.textContent = inputOverlay.value + '%';
+  const blurPx = (inputBlur.value / 100) * 20; // 0-20px blur range
+  cardBg.style.setProperty('--blur-amount', blurPx + 'px');
+  valBlur.textContent = inputBlur.value + '%';
+
   // Background
   if (bgImageDataUrl) {
     cardBg.style.backgroundImage = `url(${bgImageDataUrl})`;
     cardBg.style.backgroundColor = '';
-    cardBg.classList.add('has-image');
   } else {
     const c1 = inputBgColor1.value;
     const c2 = inputBgColor2.value;
     cardBg.style.backgroundImage = `linear-gradient(135deg, ${c1}, ${c2})`;
     cardBg.style.backgroundColor = '';
-    cardBg.classList.remove('has-image');
   }
 }
 
@@ -1141,7 +1219,7 @@ function applyDragPositions() {
 }
 
 function resetDragPositions() {
-  dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0] };
+  dragPositions = { left: [0, 0], quote: [0, 0], meta: [0, 0], quoteMark: [0, 0] };
   applyDragPositions();
 }
 
@@ -1152,9 +1230,12 @@ function resetDragPositions() {
 });
 
 inputAspectRatio.addEventListener('change', updateCard);
+inputShowAvatar.addEventListener('change', updateCard);
+inputShowQuoteMark.addEventListener('change', updateCard);
+inputShadow.addEventListener('change', updateCard);
 
 // Size sliders
-[inputQuoteSize, inputAvatarSize, inputTagSize].forEach(el => {
+[inputQuoteSize, inputAvatarSize, inputTagSize, inputOverlay, inputBlur].forEach(el => {
   el.addEventListener('input', updateCard);
 });
 
@@ -1436,6 +1517,11 @@ btnReset.addEventListener('click', () => {
   inputLockAvatarY.checked = false;
   inputDateWrap.checked = false;
   inputAspectRatio.value = '16:9';
+  inputShowAvatar.checked = true;
+  inputShowQuoteMark.checked = true;
+  inputShadow.checked = true;
+  inputOverlay.value = 45;
+  inputBlur.value = 0;
   bgImageNaturalRatio = null;
   updateCard();
   showToast('🔄 已恢复默认');

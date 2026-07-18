@@ -34,8 +34,6 @@ jobs:
 
       - name: Sync Capacitor
         run: |
-          SHA=$(git rev-parse --short HEAD)
-          sed -i "s|v1\.2\.0|v1.2.0-${SHA}|g" www/index.html
           npx cap sync android
 
       - name: Restore signing keystore
