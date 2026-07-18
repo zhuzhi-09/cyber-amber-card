@@ -1193,7 +1193,7 @@ async function updateCard() {
     avatar.src = generateDefaultAvatar(inputAt.value.trim() || '?');
   }
   const leftPanel = card.querySelector('.left-panel');
-  if (leftPanel) leftPanel.style.display = inputShowAvatar.checked ? '' : 'none';
+  if (leftPanel) leftPanel.style.visibility = inputShowAvatar.checked ? '' : 'hidden';
   const quoteMarkEl = card.querySelector('.quote-mark');
   if (quoteMarkEl) quoteMarkEl.style.display = inputShowQuoteMark.checked ? '' : 'none';
   // 3D shadow
@@ -1403,111 +1403,46 @@ btnExport.addEventListener('click', async () => {
   btnExport.textContent = '⏳ 生成中...';
   btnExport.disabled = true;
   try {
+    const cardWidth = card.offsetWidth;
     const aspectR = getEffectiveAspectRatio();
-    const dims = getExportDimensions(aspectR);
-    const EXPORT_W = dims.w;
-    const EXPORT_H = dims.h;
-    const ratio = EXPORT_W / card.offsetWidth;
+    // Use high scale for crisp output, no DOM changes = perfect layout fidelity
+    const scale = Math.max(3, Math.ceil(2400 / cardWidth));
 
-    // Helper: get computed px value, scale it
-    const gpx = (el, prop) => parseFloat(getComputedStyle(el)[prop]) || 0;
-    const spx = (v) => (v * ratio) + 'px';
-
-    // --- Collect all scalable elements ---
-    const cardContent = card.querySelector('.card-content');
-    const leftPanel = card.querySelector('.left-panel');
-    const quoteMark = card.querySelector('.quote-mark');
-    const metaRow = card.querySelector('.meta-row');
-
-    // Save current inline styles, apply scaled versions
-    const saved = [];
-    const saveSet = (el, prop, val) => {
-      saved.push({ el, prop, v: el.style[prop] });
-      el.style[prop] = val;
-    };
-
-    // Card wrapper & card
-    const wrapper = card.closest('.card-wrapper');
-    saveSet(wrapper, 'maxWidth', EXPORT_W + 'px');
-    saveSet(card, 'width', EXPORT_W + 'px');
-    saveSet(card, 'height', EXPORT_H + 'px');
-    saveSet(card, 'aspectRatio', 'unset');
-    saveSet(card, 'overflow', 'hidden');
-
-    // Left panel flex-basis
-    saveSet(leftPanel, 'flexBasis', spx(gpx(leftPanel, 'flexBasis') || 240));
-
-    // Card content padding & gap (skip gap if avatar hidden)
-    saveSet(cardContent, 'padding',
-      spx(gpx(cardContent, 'paddingTop')) + ' ' +
-      spx(gpx(cardContent, 'paddingRight')) + ' ' +
-      spx(gpx(cardContent, 'paddingBottom')) + ' ' +
-      spx(gpx(cardContent, 'paddingLeft')));
-    if (leftPanel.style.display === 'none') {
-      saveSet(cardContent, 'gap', '0px');
-    } else {
-      saveSet(cardContent, 'gap', spx(gpx(cardContent, 'gap') || 80));
-    }
-
-    // Avatar
-    const avW = gpx(avatar, 'width') || 100;
-    saveSet(avatar, 'width', spx(avW));
-    saveSet(avatar, 'height', spx(avW));
-    saveSet(avatar, 'borderRadius', spx(gpx(avatar, 'borderRadius') || 12));
-
-    // Quote mark
-    saveSet(quoteMark, 'fontSize', spx(gpx(quoteMark, 'fontSize') || 80));
-    saveSet(quoteMark, 'marginBottom', spx(gpx(quoteMark, 'marginBottom') || 20));
-
-    // Quote text (line-height inherits from CSS 1.8, auto-scales with font-size)
-    const qtFS = gpx(quoteText, 'fontSize') || 24;
-    saveSet(quoteText, 'fontSize', spx(qtFS));
-
-    // Meta row
-    saveSet(metaRow, 'marginTop', spx(gpx(metaRow, 'marginTop') || 40));
-    saveSet(metaRow, 'gap', spx(gpx(metaRow, 'gap') || 16));
-
-    // @ tag & date
-    const tgFS = gpx(atTag, 'fontSize') || 12;
-    saveSet(atTag, 'fontSize', spx(tgFS));
-    saveSet(atTag, 'padding', spx(gpx(atTag, 'paddingTop') || 8) + ' ' + spx(gpx(atTag, 'paddingRight') || 22) + ' ' + spx(gpx(atTag, 'paddingBottom') || 8) + ' ' + spx(gpx(atTag, 'paddingLeft') || 22));
-    saveSet(atTag, 'borderRadius', spx(gpx(atTag, 'borderRadius') || 20));
-    saveSet(atTag, 'maxWidth', spx(gpx(atTag, 'maxWidth') || 220));
-    saveSet(dateTag, 'fontSize', spx(tgFS));
-
-    // Drag positions
-    const origDrag = {};
-    document.querySelectorAll('[data-drag]').forEach(el => {
-      const key = el.dataset.drag;
-      origDrag[key] = [...(dragPositions[key] || [0, 0])];
-      dragPositions[key] = [origDrag[key][0] * ratio, origDrag[key][1] * ratio];
-    });
-    applyDragPositions();
-
-    // Force re-layout
-    card.offsetHeight;
-    await new Promise(r => setTimeout(r, 200));
-
-    // Capture
     const canvas = await html2canvas(card, {
-      scale: 1,
+      scale: scale,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
-      width: EXPORT_W,
-      height: EXPORT_H,
     });
 
-    // --- Restore ---
-    saved.forEach(s => { s.el.style[s.prop] = s.v; });
-    dragPositions = origDrag;
-    applyDragPositions();
-    // Re-apply original card size (restore aspect-ratio for responsive)
-    card.style.aspectRatio = '16/9';
-    card.style.width = '';
-    card.style.height = '';
+    // If background image exists, redraw at native res for quality
+    if (bgImageDataUrl) {
+      const bgImg = new Image();
+      bgImg.src = bgImageDataUrl;
+      try { await new Promise((r, rj) => { bgImg.onload = r; bgImg.onerror = rj; }); } catch(e) {}
+      if (bgImg.width) {
+        const ctx = canvas.getContext('2d');
+        const cw = canvas.width, ch = canvas.height;
+        const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+        const imgR = iw / ih, cvR = cw / ch;
+        let sx, sy, sw, sh;
+        if (imgR > cvR) { sh = ih; sw = ih * cvR; sx = (iw - sw) / 2; sy = 0; }
+        else { sw = iw; sh = iw / cvR; sx = 0; sy = (ih - sh) / 2; }
+        // Get current pixel data, draw bg behind it
+        const imgData = ctx.getImageData(0, 0, cw, ch);
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, cw, ch);
+        // Apply overlay
+        const overlayVal = inputOverlay.value / 100;
+        if (overlayVal > 0) {
+          ctx.fillStyle = `rgba(0,0,0,${overlayVal})`;
+          ctx.fillRect(0, 0, cw, ch);
+        }
+        // Restore content on top
+        ctx.putImageData(imgData, 0, 0);
+      }
+    }
 
-    // Convert & share/download
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
@@ -1542,7 +1477,7 @@ btnExport.addEventListener('click', async () => {
   } catch (err) {
     showToast('❌ 导出失败: ' + err.message);
   }
-  btnExport.textContent = '<svg class="icon"><use href="#icon-download"/></svg> 导出 PNG';
+  btnExport.innerHTML = '<svg class="icon"><use href="#icon-download"/></svg> 导出 PNG';
   btnExport.disabled = false;
 });
 
