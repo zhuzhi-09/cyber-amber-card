@@ -1568,7 +1568,8 @@ btnCheckUpdate.addEventListener('click', async () => {
     if (isNative) {
       // Android: check latest non-prerelease GitHub release
       const resp = await fetch(REPO_API + '/releases?per_page=20');
-      const releases = await resp.json();
+      const data = await resp.json();
+      const releases = Array.isArray(data) ? data : [];
       const stable = releases.filter(r => !r.prerelease);
       if (!stable.length) { showToast('✅ 暂无正式发布版本'); }
       else if (stable[0].tag_name !== CURRENT_VERSION) {
@@ -1617,7 +1618,8 @@ btnCheckUpdate.addEventListener('click', async () => {
     } else {
       // Web: check latest non-prerelease GitHub release
       const resp = await fetch(REPO_API + '/releases?per_page=20');
-      const releases = await resp.json();
+      const data = await resp.json();
+      const releases = Array.isArray(data) ? data : [];
       const stable = releases.filter(r => !r.prerelease);
       if (stable.length && stable[0].tag_name !== CURRENT_VERSION) {
         updateMsg.textContent = `新版本 ${stable[0].tag_name} 可用`;
