@@ -33,11 +33,7 @@ jobs:
         run: npm ci
 
       - name: Sync Capacitor
-        run: |
-          BRANCH=${GITHUB_REF#refs/heads/}
-          if [ "$BRANCH" = "dev" ]; then TAG="real-time-dev"; else TAG="nightly"; fi
-          sed -i "s|__RELEASE_TAG__|$TAG|g" www/index.html
-          npx cap sync android
+        run: npx cap sync android
 
       - name: Restore signing keystore
         env:
