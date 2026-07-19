@@ -1193,7 +1193,7 @@ async function updateCard() {
     avatar.src = generateDefaultAvatar(inputAt.value.trim() || '?');
   }
   const leftPanel = card.querySelector('.left-panel');
-  if (leftPanel) leftPanel.style.visibility = inputShowAvatar.checked ? '' : 'hidden';
+  if (leftPanel) leftPanel.style.opacity = inputShowAvatar.checked ? '' : '0';
   const quoteMarkEl = card.querySelector('.quote-mark');
   if (quoteMarkEl) quoteMarkEl.style.display = inputShowQuoteMark.checked ? '' : 'none';
   // 3D shadow
@@ -1404,43 +1404,72 @@ btnExport.addEventListener('click', async () => {
   btnExport.disabled = true;
   try {
     const cardWidth = card.offsetWidth;
-    const aspectR = getEffectiveAspectRatio();
-    // Use high scale for crisp output, no DOM changes = perfect layout fidelity
     const scale = Math.max(3, Math.ceil(2400 / cardWidth));
+    let canvas;
 
-    const canvas = await html2canvas(card, {
-      scale: scale,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
-    });
-
-    // If background image exists, redraw at native res for quality
     if (bgImageDataUrl) {
+      // Capture foreground: temporarily make card bg transparent
+      const origBg = cardBg.style.backgroundImage;
+      const origColor = cardBg.style.backgroundColor;
+      cardBg.style.backgroundImage = 'none';
+      cardBg.style.backgroundColor = 'transparent';
+      const origOverlay = cardBg.style.getPropertyValue('--overlay-opacity');
+      cardBg.style.setProperty('--overlay-opacity', '0');
+      const origBlur = cardBg.style.getPropertyValue('--blur-amount');
+      cardBg.style.setProperty('--blur-amount', '0px');
+
+      const fgCanvas = await html2canvas(card, {
+        scale, useCORS: true, allowTaint: true, backgroundColor: null,
+      });
+
+      // Restore card bg
+      cardBg.style.backgroundImage = origBg;
+      cardBg.style.backgroundColor = origColor;
+      cardBg.style.setProperty('--overlay-opacity', origOverlay);
+      cardBg.style.setProperty('--blur-amount', origBlur);
+
+      // Build final canvas: bg + overlay + blur + foreground
+      canvas = document.createElement('canvas');
+      canvas.width = fgCanvas.width;
+      canvas.height = fgCanvas.height;
+      const ctx = canvas.getContext('2d');
+      const cw = canvas.width, ch = canvas.height;
+
+      // Draw native-res background image with blur
       const bgImg = new Image();
       bgImg.src = bgImageDataUrl;
       try { await new Promise((r, rj) => { bgImg.onload = r; bgImg.onerror = rj; }); } catch(e) {}
       if (bgImg.width) {
-        const ctx = canvas.getContext('2d');
-        const cw = canvas.width, ch = canvas.height;
         const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
         const imgR = iw / ih, cvR = cw / ch;
         let sx, sy, sw, sh;
         if (imgR > cvR) { sh = ih; sw = ih * cvR; sx = (iw - sw) / 2; sy = 0; }
         else { sw = iw; sh = iw / cvR; sx = 0; sy = (ih - sh) / 2; }
-        // Get current pixel data, draw bg behind it
-        const imgData = ctx.getImageData(0, 0, cw, ch);
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, cw, ch);
-        // Apply overlay
-        const overlayVal = inputOverlay.value / 100;
-        if (overlayVal > 0) {
-          ctx.fillStyle = `rgba(0,0,0,${overlayVal})`;
-          ctx.fillRect(0, 0, cw, ch);
+        const blurPx = (inputBlur.value / 100) * 20;
+        if (blurPx > 0) {
+          // Draw slightly larger to avoid transparent edges from blur
+          const pad = blurPx * 4;
+          ctx.filter = `blur(${blurPx}px)`;
+          ctx.drawImage(bgImg, sx, sy, sw, sh, -pad, -pad, cw + pad * 2, ch + pad * 2);
+          ctx.filter = 'none';
+        } else {
+          ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, cw, ch);
         }
-        // Restore content on top
-        ctx.putImageData(imgData, 0, 0);
       }
+
+      // Apply overlay
+      const overlayVal = inputOverlay.value / 100;
+      if (overlayVal > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${overlayVal})`;
+        ctx.fillRect(0, 0, cw, ch);
+      }
+
+      // Draw foreground on top
+      ctx.drawImage(fgCanvas, 0, 0);
+    } else {
+      canvas = await html2canvas(card, {
+        scale, useCORS: true, allowTaint: true, backgroundColor: null,
+      });
     }
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
